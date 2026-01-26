@@ -1,90 +1,79 @@
 import streamlit as st
 import os
 import subprocess
+import librosa
+import numpy as np
 from groq import Groq
 
-# Inisialisasi Groq menggunakan Secrets yang sudah kamu simpan
+# Inisialisasi Groq
 try:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-except Exception as e:
-    st.error("API Key tidak ditemukan. Pastikan sudah memasukkan GROQ_API_KEY di menu Secrets.")
+except:
+    st.error("Masukkan GROQ_API_KEY di Secrets!")
 
-st.set_page_config(page_title="AI Music Splitter", page_icon="🎵")
+st.set_page_config(page_title="Ultra AI Music Splitter", layout="wide")
+st.title("🎸 Ultra AI Music Splitter & Analyzer")
+st.write("Memisahkan Vokal, Drum, Bass, Gitar, Piano, & Lainnya.")
 
-st.title("🎵 AI Music Splitter & Lyric Analyzer")
-st.write("Unggah musik untuk memisahkan Vokal dan Instrumen menggunakan AI.")
+uploaded_file = st.file_uploader("Upload Musik (Gunakan durasi pendek < 30 detik untuk Cloud)", type=["mp3", "wav"])
 
-# Upload File
-uploaded_file = st.file_uploader("Pilih file audio (MP3/WAV)...", type=["mp3", "wav"])
-
-if uploaded_file is not None:
-    # 1. Simpan file yang diunggah secara lokal
-    input_path = "input_audio.mp3"
-    with open(input_path, "wb") as f:
+if uploaded_file:
+    with open("input.mp3", "wb") as f:
         f.write(uploaded_file.getbuffer())
     
-    st.audio(input_path, format='audio/mp3')
+    st.audio("input.mp3")
 
-    if st.button("Mulai Proses Pemisahan"):
-        with st.spinner("Sedang memproses... Ini mungkin memakan waktu beberapa menit."):
+    if st.button("Mulai Pisahkan Semua Instrumen"):
+        with st.spinner("AI sedang bekerja keras membedah musik..."):
             try:
-                # 2. Proses Pemisahan menggunakan Demucs (2 stems: vokal & non-vokal)
-                # Catatan: Ini membutuhkan resource CPU/RAM yang besar
+                # Menggunakan model 6-stems untuk kepekaan maksimal
+                # vokal, drum, bass, gitar, piano, other
                 subprocess.run([
                     "python", "-m", "demucs.separate", 
-                    "--two-stems", "vocals", 
-                    input_path, 
-                    "-o", "output"
+                    "-n", "htdemucs_6s", 
+                    "input.mp3", "-o", "output"
                 ], check=True)
                 
-                # Path hasil output (default demucs)
-                path_vokal = "output/htdemucs/input_audio/vocals.wav"
-                path_instrumen = "output/htdemucs/input_audio/no_vocals.wav"
-
-                # 3. Tampilkan Hasil
-                st.success("Pemisahan Selesai!")
+                output_dir = "output/htdemucs_6s/input"
+                stems = ["vocals", "drums", "bass", "guitar", "piano", "other"]
                 
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.subheader("🎤 Vokal")
-                    if os.path.exists(path_vokal):
-                        st.audio(path_vokal)
-                        with open(path_vokal, "rb") as f:
-                            st.download_button("Unduh Vokal", f, file_name="vokal.wav")
+                cols = st.columns(3)
+                for i, stem in enumerate(stems):
+                    file_path = f"{output_dir}/{stem}.wav"
+                    if os.path.exists(file_path):
+                        with cols[i % 3]:
+                            st.write(f"🎧 **{stem.capitalize()}**")
+                            st.audio(file_path)
 
-                with col2:
-                    st.subheader("🎹 Instrumen")
-                    if os.path.exists(path_instrumen):
-                        st.audio(path_instrumen)
-                        with open(path_instrumen, "rb") as f:
-                            st.download_button("Unduh Instrumen", f, file_name="instrumen.wav")
-
-                # 4. Integrasi Groq: Transkripsi & Analisis
+                # ANALISIS VOKAL MENGGUNAKAN GROQ & LIBROSA
                 st.divider()
-                st.subheader("📝 Analisis Lirik (Powered by Groq)")
-                with open(path_vokal, "rb") as audio_file:
-                    # Menggunakan model Whisper di Groq untuk transkripsi cepat
-                    transcription = client.audio.transcriptions.create(
-                        file=(path_vokal, audio_file.read()),
-                        model="whisper-large-v3",
-                        response_format="text"
-                    )
+                st.subheader("🧐 Analisis Karakteristik Vokal")
+                
+                vocal_path = f"{output_dir}/vocals.wav"
+                if os.path.exists(vocal_path):
+                    # Transkripsi Vokal dengan Whisper Groq
+                    with open(vocal_path, "rb") as af:
+                        transcript = client.audio.transcriptions.create(
+                            file=(vocal_path, af.read()),
+                            model="whisper-large-v3",
+                            response_format="text"
+                        )
                     
-                    # Mintalah model Llama 3 di Groq untuk menjelaskan makna liriknya
-                    completion = client.chat.completions.create(
+                    # Mintalah Groq menganalisis apakah ada humming atau backing vocal
+                    analysis = client.chat.completions.create(
                         model="llama3-8b-8192",
                         messages=[
-                            {"role": "system", "content": "Kamu adalah ahli musik. Jelaskan makna dari lirik lagu berikut dalam Bahasa Indonesia."},
-                            {"role": "user", "content": transcription}
+                            {"role": "system", "content": "Kamu adalah asisten audio expert."},
+                            {"role": "user", "content": f"Berdasarkan lirik ini: '{transcript}', apakah kamu bisa mendeteksi suasana lagu dan kemungkinan adanya backing vocal/humming?"}
                         ]
                     )
                     
-                    st.write("**Transkrip Lirik:**")
-                    st.info(transcription)
-                    st.write("**Makna Lagu:**")
-                    st.success(completion.choices[0].message.content)
+                    st.write("**Lirik Terdeteksi:**")
+                    st.info(transcript)
+                    st.write("**Analisis AI:**")
+                    st.success(analysis.choices[0].message.content)
 
             except Exception as e:
-                st.error(f"Terjadi kesalahan teknis: {e}")
-                st.warning("Tips: Streamlit Cloud gratis memiliki batas RAM. Jika error, coba gunakan file audio yang durasinya sangat pendek (di bawah 1 menit).")
+                st.error(f"Error: {e}")
+                st.info("Saran: Gunakan file yang sangat pendek atau jalankan di komputer lokal.")
                 
