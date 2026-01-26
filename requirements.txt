@@ -1,4 +1,4 @@
 streamlit
 groq
 demucs
-pydub
+ffmpeg-python
