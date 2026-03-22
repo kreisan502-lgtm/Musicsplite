@@ -1,29 +1,27 @@
 import streamlit as st
 import time
 
-# 1. Konfigurasi Halaman - Harus di baris pertama setelah import
+# 1. Konfigurasi Halaman (Wajib Paling Atas)
 st.set_page_config(
-    page_title="HBD Sayang! ❤️",
+    page_title="Happy Birthday! ❤️",
     page_icon="🎂",
     layout="centered"
 )
 
-# 2. CSS Sederhana (Baris tunggal agar tidak error)
-st.markdown("<style>.stApp {background-color: #fff5f5;} .stButton>button {width:100%; border-radius:20px; background-color:#ff4b4b; color:white;}</style>", unsafe_content_html=True)
-
-# 3. Judul & Musik Latar (Placeholder)
-st.markdown("<h1 style='text-align: center; color: #d32f2f;'>Happy Birthday! 🎂💖</h1>", unsafe_content_html=True)
-st.markdown("<p style='text-align: center; color: #ff4b4b;'><i>\"Seseorang yang spesial sedang berulang tahun...\"</i></p>", unsafe_content_html=True)
+# 2. Judul Sederhana (Menggunakan fungsi bawaan Streamlit agar aman)
+st.title("Happy Birthday! 🎂💖")
+st.subheader("Seseorang yang spesial sedang berulang tahun...")
 st.divider()
 
-# Audio Sample (Ganti ke musik romantis nanti)
-st.write("🎵 **Putar musiknya:**")
+# 3. Audio & Musik (Menggunakan Link Sampel)
+st.write("🎵 **Putar musiknya di sini:**")
+# Audio ini akan langsung muncul tanpa CSS tambahan
 st.audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
 
-# 4. Foto Placeholder (Menggunakan gambar dari internet dulu)
+# 4. Foto Utama (Placeholder)
 st.write("")
 st.image("https://images.unsplash.com/photo-1513151233558-d860c5398176?q=80&w=1000", 
-         caption="Bayangkan ini foto kita berdua ✨", 
+         caption="Momen indah untuk hari yang indah ✨", 
          use_container_width=True)
 
 # 5. Pesan Romantis
@@ -35,18 +33,19 @@ memilikimu. Terima kasih sudah menjadi alasan di balik senyumku setiap hari.
 
 # 6. Tombol Kejutan
 st.write("")
-if st.button("KLIK UNTUK KEJUTAN! 🎁"):
+if st.button("KLIK UNTUK KEJUTAN! 🎁", use_container_width=True):
+    # Efek Visual
     st.balloons()
     st.snow()
     
-    # Pesan Rahasia (Audio Placeholder)
-    st.success("Dengarkan pesan suara dariku... ❤️")
+    # Pesan Suara (Placeholder)
+    st.success("Dengarkan pesan rahasia dariku... ❤️")
     st.audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3")
     
-    # Animasi teks penutup
+    # Animasi Teks Penutup Sederhana
+    st.write("---")
     placeholder = st.empty()
     full_msg = "I Love You Today, Tomorrow, and Always! 🥂"
     for i in range(len(full_msg) + 1):
-        placeholder.markdown(f"<h3 style='text-align: center; color: #ff4b4b;'>{full_msg[:i]}</h3>", unsafe_content_html=True)
+        placeholder.markdown(f"### {full_msg[:i]}")
         time.sleep(0.05)
-        
