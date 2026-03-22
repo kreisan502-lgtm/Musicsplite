@@ -1,79 +1,87 @@
 import streamlit as st
-import os
-import subprocess
-import librosa
-import numpy as np
-from groq import Groq
+import time
 
-# Inisialisasi Groq
+# Konfigurasi Halaman agar tampil cantik di HP maupun Laptop
+st.set_page_config(
+    page_title="Happy Birthday! ❤️",
+    page_icon="🎂",
+    layout="centered"
+)
+
+# Custom CSS untuk tampilan romantis tanpa ribet
+st.markdown("""
+    <style>
+    .stApp {
+        background: linear-gradient(to bottom, #fff5f5, #ffe0e0);
+    }
+    .main-title {
+        color: #d32f2f;
+        text-align: center;
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        font-size: 2.5rem;
+        margin-top: 20px;
+    }
+    .love-text {
+        color: #5d4037;
+        text-align: center;
+        font-style: italic;
+    }
+    </style>
+    """, unsafe_content_html=True)
+
+# --- LOADING DATA DARI SECRETS ---
+# Pastikan nama di st.secrets[] sama dengan yang diisi di dashboard Streamlit Cloud
 try:
-    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+    URL_FOTO = st.secrets["LINK_FOTO"]
+    URL_LAGU = st.secrets["LINK_LAGU"]
+    URL_VOICE = st.secrets["LINK_VOICE"]
 except:
-    st.error("Masukkan GROQ_API_KEY di Secrets!")
+    st.error("Waduh! Sepertinya link rahasia belum diatur di Streamlit Secrets.")
+    st.stop()
 
-st.set_page_config(page_title="Ultra AI Music Splitter", layout="wide")
-st.title("🎸 Ultra AI Music Splitter & Analyzer")
-st.write("Memisahkan Vokal, Drum, Bass, Gitar, Piano, & Lainnya.")
+# --- BAGIAN 1: HEADER & MUSIK ---
+st.markdown('<h1 class="main-title">Happy Birthday, Sayang! 🎂💖</h1>', unsafe_content_html=True)
+st.write("---")
 
-uploaded_file = st.file_uploader("Upload Musik (Gunakan durasi pendek < 30 detik untuk Cloud)", type=["mp3", "wav"])
+# Memutar lagu latar secara otomatis
+st.audio(URL_LAGU, format="audio/mp3")
+st.caption("🎵 *Tekan play untuk memulai suasana romantis...*")
 
-if uploaded_file:
-    with open("input.mp3", "wb") as f:
-        f.write(uploaded_file.getbuffer())
+# --- BAGIAN 2: FOTO UTAMA ---
+st.write("")
+col1, col2, col3 = st.columns([0.1, 0.8, 0.1])
+with col2:
+    # Foto diambil dari Google Drive via Secrets
+    st.image(URL_FOTO, use_container_width=True, caption="Setiap momen bersamamu adalah favoritku ✨")
+
+# --- BAGIAN 3: PESAN ---
+st.write("")
+st.markdown("""
+    <div style="background-color: white; padding: 20px; border-radius: 15px; border-left: 5px solid #ff4b4b;">
+        <p style="font-size: 1.1rem; line-height: 1.6; color: #333;">
+            "Hai kamu! Di hari yang luar biasa ini, aku cuma mau bilang kalau aku sangat bersyukur 
+            memilikimu. Terima kasih sudah menjadi alasan di balik senyumku setiap hari. 
+            Semoga semua impianmu tercapai, dan aku bisa terus ada di sampingmu untuk merayakannya."
+        </p>
+    </div>
+    """, unsafe_content_html=True)
+
+# --- BAGIAN 4: TOMBOL KEJUTAN ---
+st.write("")
+st.write("👇 **Ada sesuatu buat kamu, klik tombol di bawah:**")
+
+if st.button("KLIK UNTUK KEJUTAN! 🎁"):
+    # Efek Balon Terbang
+    st.balloons()
     
-    st.audio("input.mp3")
-
-    if st.button("Mulai Pisahkan Semua Instrumen"):
-        with st.spinner("AI sedang bekerja keras membedah musik..."):
-            try:
-                # Menggunakan model 6-stems untuk kepekaan maksimal
-                # vokal, drum, bass, gitar, piano, other
-                subprocess.run([
-                    "python", "-m", "demucs.separate", 
-                    "-n", "htdemucs_6s", 
-                    "input.mp3", "-o", "output"
-                ], check=True)
-                
-                output_dir = "output/htdemucs_6s/input"
-                stems = ["vocals", "drums", "bass", "guitar", "piano", "other"]
-                
-                cols = st.columns(3)
-                for i, stem in enumerate(stems):
-                    file_path = f"{output_dir}/{stem}.wav"
-                    if os.path.exists(file_path):
-                        with cols[i % 3]:
-                            st.write(f"🎧 **{stem.capitalize()}**")
-                            st.audio(file_path)
-
-                # ANALISIS VOKAL MENGGUNAKAN GROQ & LIBROSA
-                st.divider()
-                st.subheader("🧐 Analisis Karakteristik Vokal")
-                
-                vocal_path = f"{output_dir}/vocals.wav"
-                if os.path.exists(vocal_path):
-                    # Transkripsi Vokal dengan Whisper Groq
-                    with open(vocal_path, "rb") as af:
-                        transcript = client.audio.transcriptions.create(
-                            file=(vocal_path, af.read()),
-                            model="whisper-large-v3",
-                            response_format="text"
-                        )
-                    
-                    # Mintalah Groq menganalisis apakah ada humming atau backing vocal
-                    analysis = client.chat.completions.create(
-                        model="llama3-8b-8192",
-                        messages=[
-                            {"role": "system", "content": "Kamu adalah asisten audio expert."},
-                            {"role": "user", "content": f"Berdasarkan lirik ini: '{transcript}', apakah kamu bisa mendeteksi suasana lagu dan kemungkinan adanya backing vocal/humming?"}
-                        ]
-                    )
-                    
-                    st.write("**Lirik Terdeteksi:**")
-                    st.info(transcript)
-                    st.write("**Analisis AI:**")
-                    st.success(analysis.choices[0].message.content)
-
-            except Exception as e:
-                st.error(f"Error: {e}")
-                st.info("Saran: Gunakan file yang sangat pendek atau jalankan di komputer lokal.")
-                
+    # Menampilkan pesan suara dari Secrets
+    st.success("Dengarkan pesan suara dariku ya... ❤️")
+    st.audio(URL_VOICE)
+    
+    # Animasi teks penutup
+    msg = st.empty()
+    full_msg = "I Love You Today, Tomorrow, and Always! 🥂✨"
+    for i in range(len(full_msg) + 1):
+        msg.markdown(f"<h2 style='text-align: center; color: #ff4b4b;'>{full_msg[:i]}</h2>", unsafe_content_html=True)
+        time.sleep(0.08)
+        
